@@ -58,8 +58,13 @@ public class Normalizer {
     }
 
     private String extractName(String name) {
-        Matcher numbersInName = NUMBERS_IN_NAME.matcher(name);
 
+        Matcher accountNumber = ACCOUNT_TRANSFER.matcher(name);
+        if (accountNumber.find()) {
+            name = accountNumber.replaceAll("").trim();
+        }
+
+        Matcher numbersInName = NUMBERS_IN_NAME.matcher(name);
         if (numbersInName.find()) {
             return numbersInName.replaceAll("").trim();
         }

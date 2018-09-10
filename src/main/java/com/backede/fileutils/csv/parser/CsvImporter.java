@@ -27,7 +27,7 @@ public interface CsvImporter<T> {
 
     }
 
-    public Optional<List<CsvRecordWrapper>> modifyCsvRecords(Optional<Normalizer> records) throws IOException;
+    public Optional<List<CsvRecordWrapper>> modifyCsvRecords(Optional<Normalizer> records);
 
     public Optional<T> executeLogic(List<CsvRecordWrapper> records);
 

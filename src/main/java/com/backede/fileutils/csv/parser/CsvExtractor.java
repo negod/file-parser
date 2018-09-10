@@ -23,26 +23,22 @@ import lombok.extern.slf4j.Slf4j;
 @Getter
 public class CsvExtractor<T> {
 
-    private final CsvImporter importer;
+    private final CsvImporter<T> importer;
     private final String filePath;
     private final Boolean hasHeaders;
     private Optional<List<CsvRecordWrapper>> records;
 
-    public static final Boolean CsvFileHasHeaders = Boolean.TRUE;
-    public static final Boolean CsvFileHasNotHeaders = Boolean.FALSE;
+    public static final Boolean CSV_FILE_HA_HEADERS = Boolean.TRUE;
+    public static final Boolean CSV_FILE_HAS_NOT_HEADERS = Boolean.FALSE;
 
-    public CsvExtractor(CsvImporter importer, String filePath, Boolean hasHeaders) {
+    public CsvExtractor(CsvImporter<T> importer, String filePath, Boolean hasHeaders) {
         this.importer = importer;
         this.filePath = filePath;
         this.hasHeaders = hasHeaders;
 
         try {
-            Optional<Normalizer> csvRecords = importer.getCsvRecords(filePath, hasHeaders);
-            records = importer.modifyCsvRecords(csvRecords);
+            records = importer.modifyCsvRecords(importer.getCsvRecords(filePath, hasHeaders));
         } catch (BeckedeFileException ex) {
-            log.error("Error when importing CsvRecords", ex);
-            Logger.getLogger(CsvExtractor.class.getName()).log(Level.SEVERE, null, ex);
-        } catch (IOException ex) {
             log.error("Error when importing CsvRecords", ex);
         }
 
@@ -50,8 +46,8 @@ public class CsvExtractor<T> {
 
     public void executeLogic(Consumer<T> valueConsumer) {
 
-        records.ifPresent(records -> {
-            importer.executeLogic(records).ifPresent(valueConsumer);
+        records.ifPresent((List<CsvRecordWrapper> csvRecords) -> {
+            importer.executeLogic(csvRecords).ifPresent(valueConsumer);
         });
 
     }
