@@ -25,10 +25,13 @@ public class CsvRecordWrapper {
     public Optional<String> getColumn(CsvColumn column) {
         try {
             return Optional.ofNullable(record.get(column.getColumnName()));
+        } catch (IllegalArgumentException e) {
+            log.debug("Error when getting column {}", column.getColumnName(), e.getMessage());
+            return Optional.empty();
         } catch (Exception e) {
-            log.error("Error when getting column {}", column.getColumnName(), e);
+            log.debug("Error when getting column {}", column.getColumnName(), e.getMessage());
+            return Optional.empty();
         }
-        return Optional.empty();
     }
 
 }
