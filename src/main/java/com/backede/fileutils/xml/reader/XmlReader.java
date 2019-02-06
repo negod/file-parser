@@ -7,8 +7,6 @@ package com.backede.fileutils.xml.reader;
 
 import java.io.File;
 import java.util.Optional;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import javax.xml.bind.JAXBContext;
 import javax.xml.bind.JAXBException;
 import javax.xml.bind.Unmarshaller;

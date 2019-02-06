@@ -7,7 +7,6 @@ package com.backede.fileutils.csv.parser;
 
 import com.backede.fileutils.csv.reader.CsvReaderHandler;
 import com.backede.fileutils.exception.BeckedeFileException;
-import java.io.IOException;
 import java.util.List;
 import java.util.Optional;
 
