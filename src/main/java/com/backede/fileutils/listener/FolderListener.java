@@ -12,85 +12,78 @@ import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import static java.nio.file.StandardWatchEventKinds.ENTRY_CREATE;
-import static java.nio.file.StandardWatchEventKinds.ENTRY_MODIFY;
 import java.nio.file.WatchEvent;
 import java.nio.file.WatchKey;
 import java.nio.file.WatchService;
 import java.util.function.Consumer;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import javax.swing.Timer;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 
 /**
  *
- * @author joaki
+ * @author Joakim Backdede <joakim.backede@outlook.com>
  */
 @Slf4j
 @Getter
 public class FolderListener extends Thread {
 
     private final Path folderPath;
-    private final Integer timerInterval;
     private final Consumer<File> consumer;
+    private final WatchService watcher;
+    private final WatchKey key;
 
-    public FolderListener(Path folderPath, Integer timerInterval, Consumer<File> consumer) throws BeckedeFileException, IOException {
+    public FolderListener(Path folderPath, Consumer<File> consumer, Boolean createFolder) throws BeckedeFileException, IOException {
 
-        this.timerInterval = timerInterval;
         this.folderPath = folderPath;
         this.consumer = consumer;
 
         File file = this.folderPath.toFile();
+
+        if (!file.exists() && createFolder) {
+            Files.createDirectory(folderPath);
+        }
 
         if (!file.isDirectory()) {
             log.error("Path need to point to a folder. Path = {}", file.getAbsolutePath());
             throw new BeckedeFileException("Path need to point to a folder");
         }
 
-        if (this.timerInterval < 1000) {
-            log.error("Timerinterval needs to be at least 1 second. Interval ( ms ) = {}", timerInterval);
-            throw new BeckedeFileException("Timerinterval needs to be at least 1 second. Interval ( ms ) = {}");
-        }
+        this.watcher = FileSystems.getDefault().newWatchService();
+        this.key = folderPath.register(watcher,
+                ENTRY_CREATE
+        );
 
+    }
+
+    private void checkForNewFiles(Path folderPath) {
+        File folder = folderPath.toFile();
+        for (File listFile : folder.listFiles()) {
+            consumer.accept(listFile);
+        }
     }
 
     @Override
     public void run() {
 
-        try {
+        checkForNewFiles(folderPath);
 
-            WatchService watcher = FileSystems.getDefault().newWatchService();
+        while (true) {
+            try {
+                WatchKey key = watcher.take();
 
-            WatchKey key = folderPath.register(watcher,
-                    ENTRY_CREATE,
-                    ENTRY_MODIFY);
-
-            Timer timer = new Timer(timerInterval, new ActionListener() {
-
-                @Override
-                public void actionPerformed(ActionEvent arg0) {
-
-                    try {
-                        WatchKey key = watcher.take();
-
-                        for (WatchEvent<?> event : key.pollEvents()) {
-                            WatchEvent<Path> ev = (WatchEvent<Path>) event;
-                            Path filename = ev.context();
-                            consumer.accept(folderPath.resolve(filename).toFile());
-                        }
-
-                    } catch (InterruptedException ex) {
-                        log.error("Error when getting folder changes {}", ex.getStackTrace());
-                    }
+                for (WatchEvent<?> event : key.pollEvents()) {
+                    WatchEvent<Path> ev = (WatchEvent<Path>) event;
+                    Path filename = ev.context();
+                    consumer.accept(folderPath.resolve(filename).toFile());
                 }
 
-            });
-            timer.setRepeats(true);
-            timer.start();
-
-        } catch (IOException ex) {
-            log.error("Error when initializing timer {}", ex.getStackTrace());
+            } catch (InterruptedException ex) {
+                log.error("Error when getting folder changes {}", ex.getStackTrace());
+            }
         }
 
     }
-
 }

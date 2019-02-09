@@ -14,10 +14,11 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.AfterClass;
-import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import org.junit.Before;
 import org.junit.FixMethodOrder;
@@ -30,15 +31,13 @@ import org.junit.runners.MethodSorters;
  */
 @Slf4j
 @FixMethodOrder(MethodSorters.NAME_ASCENDING)
-public class FolderListenerTest {
+public class FolderListenerExecutionExistingFileTest {
 
     private static final Path ROOT = Paths.get("target");
     private static final Path FILE_PATH = Paths.get("/test.tst");
     private static final Path FOLDER_PATH = Paths.get(ROOT.toString().concat("/testfolder"));
 
     private static final Path FILE_FOLDER_PATH = Paths.get(FOLDER_PATH.toString().concat(FILE_PATH.toString()));
-
-    private final Integer TIMER_INTERVAL = 1000;
 
     private Boolean DO_NOT_CREATE_FOLDER = Boolean.FALSE;
     private Boolean CREATE_FOLDER = Boolean.TRUE;
@@ -47,7 +46,7 @@ public class FolderListenerTest {
         System.out.println("Default consumer");
     };
 
-    public FolderListenerTest() {
+    public FolderListenerExecutionExistingFileTest() {
     }
 
     @Before
@@ -64,43 +63,29 @@ public class FolderListenerTest {
         Files.deleteIfExists(FOLDER_PATH);
     }
 
-    @Test(expected = BeckedeFileException.class)
-    public void testNeedsToBeAFolderIsFile() throws BeckedeFileException, IOException {
-        System.out.println("testNeedsToBeAFolderIsFile");
+    @Test
+    public void testFileIsImportedWhenFileAlreadyInFolder() throws BeckedeFileException, IOException, InterruptedException {
+        System.out.println("testFileIsImportedWhenFileAlreadyInFolder");
+
+        CountDownLatch countDown = new CountDownLatch(1);
+
+        Consumer<File> consumer = file -> {
+            assertTrue("File need to exist!", file.exists());
+            countDown.countDown();
+        };
+
+        Integer sleepTimer = 1000;
+
+        Files.createDirectory(FOLDER_PATH);
+
         List<String> lines = Arrays.asList("The first line", "The second line");
-        Files.createDirectory(FOLDER_PATH);
         Files.write(FILE_FOLDER_PATH, lines, Charset.forName("UTF-8"));
-        FolderListener listener = new FolderListener(FILE_FOLDER_PATH, CONSUMER, DO_NOT_CREATE_FOLDER);
-    }
 
-    @Test
-    public void testNeedsToBeAFolderIsFolder() throws BeckedeFileException, IOException {
-        System.out.println("testNeedsToBeAFolderIsFolder");
-        Files.createDirectory(FOLDER_PATH);
-        FolderListener listener = new FolderListener(FOLDER_PATH, CONSUMER, DO_NOT_CREATE_FOLDER);
-        assertEquals("Path need to be equal", listener.getFolderPath(), FOLDER_PATH);
-    }
+        new FolderListener(FOLDER_PATH, consumer, CREATE_FOLDER).start();
 
-    @Test
-    public void testFolderCreated() throws BeckedeFileException, IOException {
-        System.out.println("testFolderCreated");
-        FolderListener listener = new FolderListener(FOLDER_PATH, CONSUMER, CREATE_FOLDER);
-
-        File file = new File(FOLDER_PATH.toString());
-        assertTrue(file.exists());
-
-    }
-
-    @Test
-    public void testFolderCreatedAlreadyCreated() throws BeckedeFileException, IOException {
-        System.out.println("testFolderCreatedAlreadyCreated");
-
-        Files.createDirectory(FOLDER_PATH);
-        FolderListener listener = new FolderListener(FOLDER_PATH, CONSUMER, CREATE_FOLDER);
-
-        File file = new File(FOLDER_PATH.toString());
-        assertTrue(file.exists());
-
+        //wait until the message is received, but not more than one second
+        //await returns false if it reaches the timeout
+        assertTrue(countDown.await(sleepTimer, TimeUnit.MILLISECONDS));
     }
 
 }
